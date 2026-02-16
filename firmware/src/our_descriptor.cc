@@ -629,6 +629,19 @@ void stadia_sanitize_report(uint8_t report_id, uint8_t* buffer, uint16_t len) {
     }
 }
 
+// Keyboard-only mode handlers (simple 6KRO keyboard for PS5/console compatibility)
+bool keyboard_only_should_cause_wakeup(uint8_t report_id, const uint8_t* buffer, uint16_t len) {
+    // Standard keyboard report: byte 0 = modifiers, byte 1 = reserved, bytes 2-7 = keycodes
+    // Wake on any modifier or keycode pressed
+    for (uint16_t i = 0; i < len; i++) {
+        if (i == 1) continue;  // Skip reserved byte
+        if (buffer[i] != 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 const our_descriptor_def_t our_descriptors[] = {
     {
         .idx = 0,
@@ -695,6 +708,15 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_received_report = do_handle_received_report,
         .clear_report = xac_compat_clear_report,
         .default_value = ps4_stadia_default_value,  // sic
+    },
+    {
+        // Keyboard only - simple 6KRO keyboard for PS5/console compatibility
+        // Uses standard boot keyboard format: no Report IDs, 8-byte reports
+        .idx = 6,
+        .descriptor = boot_kb_report_descriptor,
+        .descriptor_length = boot_kb_report_descriptor_length,
+        .handle_received_report = do_handle_received_report,
+        .should_cause_wakeup = keyboard_only_should_cause_wakeup,
     },
 };
 
